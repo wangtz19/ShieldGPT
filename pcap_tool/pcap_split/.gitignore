@@ -1,0 +1,6 @@
+objs/*
+deps/*
+main
+result/*
+__pycache__/*
+*.out
