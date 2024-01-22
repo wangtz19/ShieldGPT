@@ -1,4 +1,4 @@
-A fast pcap splitter written with C++ by [Neptune](https://github.com/Neptune17)
+A fast pcap splitter written with C++ by [Neptune](https://github.com/Neptune17/useless_libpcap_lib)
 
 ## Compile
 Run the compiling script
