@@ -1,0 +1,148 @@
+{
+  "slowbody2": [
+    {
+      "dst_ip": "75.127.97.72",
+      "start_offset": 53,
+      "end_offset": 118
+    },
+    {
+      "dst_ip": "69.192.24.88",
+      "start_offset": 493,
+      "end_offset": 543
+    },
+    {
+      "dst_ip": "97.74.144.108",
+      "start_offset": 543,
+      "end_offset": 549
+    },
+    {
+      "dst_ip": "203.73.24.75",
+      "start_offset": 549,
+      "end_offset": 560
+    }
+  ],
+  "slowread": [
+    {
+      "dst_ip": "75.127.97.72",
+      "start_offset": 118,
+      "end_offset": 142
+    },
+    {
+      "dst_ip": "74.55.1.4",
+      "start_offset": 662,
+      "end_offset": 687
+    }
+  ],
+  "ddossim": [
+    {
+      "dst_ip": "75.127.97.72",
+      "start_offset": 142,
+      "end_offset": 170
+    },
+    {
+      "dst_ip": "97.74.144.108",
+      "start_offset": 208,
+      "end_offset": 209
+    }
+  ],
+  "goldeneye": [
+    {
+      "dst_ip": "75.127.97.72",
+      "start_offset": 170,
+      "end_offset": 177
+    },
+    {
+      "dst_ip": "97.74.144.108",
+      "start_offset": 426,
+      "end_offset": 493
+    },
+    {
+      "dst_ip": "69.192.24.88",
+      "start_offset": 1163,
+      "end_offset": 1165
+    }
+  ],
+  "slowheaders": [
+    {
+      "dst_ip": "74.63.40.21",
+      "start_offset": 177,
+      "end_offset": 188
+    },
+    {
+      "dst_ip": "67.220.214.50",
+      "start_offset": 360,
+      "end_offset": 426
+    },
+    {
+      "dst_ip": "97.74.104.201",
+      "start_offset": 687,
+      "end_offset": 813
+    },
+    {
+      "dst_ip": "97.74.144.108",
+      "start_offset": 947,
+      "end_offset": 993
+    },
+    {
+      "dst_ip": "75.127.97.72",
+      "start_offset": 1033,
+      "end_offset": 1163
+    }
+  ],
+  "rudy": [
+    {
+      "dst_ip": "75.127.97.72",
+      "start_offset": 188,
+      "end_offset": 208
+    },
+    {
+      "dst_ip": "208.113.162.153",
+      "start_offset": 209,
+      "end_offset": 278
+    },
+    {
+      "dst_ip": "97.74.144.108",
+      "start_offset": 560,
+      "end_offset": 662
+    },
+    {
+      "dst_ip": "74.55.1.4",
+      "start_offset": 1259,
+      "end_offset": null
+    }
+  ],
+  "hulk": [
+    {
+      "dst_ip": "69.84.133.138",
+      "start_offset": 278,
+      "end_offset": 360
+    },
+    {
+      "dst_ip": "74.55.1.4",
+      "start_offset": 813,
+      "end_offset": 827
+    },
+    {
+      "dst_ip": "69.192.24.88",
+      "start_offset": 827,
+      "end_offset": 920
+    },
+    {
+      "dst_ip": "75.127.97.72",
+      "start_offset": 1165,
+      "end_offset": 1259
+    }
+  ],
+  "slowloris": [
+    {
+      "dst_ip": "97.74.144.108",
+      "start_offset": 920,
+      "end_offset": 947
+    },
+    {
+      "dst_ip": "75.127.97.72",
+      "start_offset": 993,
+      "end_offset": 1033
+    }
+  ]
+}
