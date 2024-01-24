@@ -81,7 +81,7 @@ def generate_digest(pcap_file_path):
                 tcp_window_size = ""
                 payload = ""
             key_fields.append({
-                "packet_size": packet_size,
+                "packet_size (byte)": packet_size,
                 "timestamp": timestamp,
                 "tcp_flags": tcp_flags,
                 "tcp_window_size": tcp_window_size,
@@ -119,17 +119,17 @@ def generate_digest(pcap_file_path):
     res = {
         "total_packets": total_packets,
         "total_bytes": total_bytes,
-        "min_packet_size": min_packet_size,
-        "max_packet_size": max_packet_size,
-        "avg_packet_size": avg_packet_size,
-        "std_packet_size": std_packet_size,
-        "min_packet_interval": min_packet_interval,
-        "max_packet_interval": max_packet_interval,
-        "avg_packet_interval": avg_packet_interval,
-        "std_packet_interval": std_packet_interval,
-        "flow_completion_time": fct,
-        "packet_rate": packet_rate,
-        "byte_rate": byte_rate,
+        "min_packet_size (byte)": round(min_packet_size, 3),
+        "max_packet_size (byte)": round(max_packet_size, 3),
+        "avg_packet_size (byte)": round(avg_packet_size, 3),
+        "std_packet_size (byte)": round(std_packet_size, 3),
+        "min_packet_interval (second)": round(min_packet_interval, 3),
+        "max_packet_interval (second)": round(max_packet_interval, 3),
+        "avg_packet_interval (second)": round(avg_packet_interval, 3),
+        "std_packet_interval (second)": round(std_packet_interval, 3),
+        "flow_completion_time (second)": round(fct, 3),
+        "packet_rate (# per second)": round(packet_rate, 3),
+        "byte_rate (byte per second)": round(byte_rate, 3),
         "src_ip": src_ip,
         "src_port": src_port,
         "dst_ip": dst_ip,
@@ -143,6 +143,6 @@ def generate_digest(pcap_file_path):
 if __name__ == "__main__":
     pcap_filenames = glob.glob("flow_pcap_5_tuple/*/*/*.pcap")
     for pcap_filename in tqdm(pcap_filenames):
-        if os.path.exists(pcap_filename.replace(".pcap", ".json")):
-            continue
+        # if os.path.exists(pcap_filename.replace(".pcap", ".json")):
+        #     continue
         generate_digest(pcap_filename)

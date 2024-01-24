@@ -1,3 +1,5 @@
 *.pcap
 flow*
 *.ipynb
+*.csv
+*.json
