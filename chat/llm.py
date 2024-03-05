@@ -12,8 +12,8 @@ def set_proxy():
     os.environ['HTTPS_PROXY'] = proxy
 
 def get_openai_client(model_name):
-    assert model_name in ["gpt-3.5-turbo", "gpt-4"]
-    filename = ".openai-key-gpt4" if model_name == "gpt-4" else ".openai-key-gpt3.5"
+    # assert model_name in ["gpt-3.5-turbo", "gpt-4"]
+    filename = ".openai-key-gpt4" if model_name.startswith("gpt-4") else ".openai-key-gpt3.5"
     key_str = open(filename).read().strip()
     client = OpenAI(api_key=key_str)
     return client
@@ -77,7 +77,6 @@ def gpt_generate(client, prompt, model_name):
             top_p=1,
             frequency_penalty=0,
             presence_penalty=0,
-            stop=["\n\n"]
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -101,7 +100,8 @@ def llm_generate(prompt, model_name, model, tokenizer):
     """
     model: OpenAI client or HuggingFace model
     """
-    if model_name in ["gpt-3.5-turbo", "gpt-4"]:
+    # if model_name in ["gpt-3.5-turbo", "gpt-4"]:
+    if model_name.startswith("gpt-3.5") or model_name.startswith("gpt-4"):
         resp = gpt_generate(model, prompt, model_name)
     elif "chatglm" in model_name.lower() or "qwen" in model_name.lower():
         resp, _ = model.chat(tokenizer, prompt, history=[])

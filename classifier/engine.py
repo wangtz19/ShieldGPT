@@ -217,6 +217,10 @@ def evaluate(data_loader, model, device):
     macro = precision_recall_fscore_support(target_all, pred_all, average='weighted')
     cm = confusion_matrix(target_all, pred_all)
 
+    # compute acc, precision, recall, f1 for each class
+    acc = accuracy_score(target_all, pred_all)
+    pre_per_class, rec_per_class, f1_per_class, support_per_class = precision_recall_fscore_support(target_all, pred_all, average=None)
+
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print('* Acc@1 {top1.global_avg:.4f} Acc@5 {top5.global_avg:.4f} loss {losses.global_avg:.4f}'
@@ -231,5 +235,10 @@ def evaluate(data_loader, model, device):
     test_state['macro_rec'] = macro[1]
     test_state['macro_f1'] = macro[2]
     test_state['cm'] = cm
+    test_state['acc'] = acc
+    test_state['pre_per_class'] = pre_per_class
+    test_state['rec_per_class'] = rec_per_class
+    test_state['f1_per_class'] = f1_per_class
+    test_state['support_per_class'] = support_per_class
 
     return test_state
