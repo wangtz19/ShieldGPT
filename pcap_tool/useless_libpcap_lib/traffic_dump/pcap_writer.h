@@ -10,11 +10,13 @@
 
 class PcapWriter {
   public:
-    PcapWriter(const char *pcap_file_dir, uint32_t kCaplen = 500);
+    PcapWriter(const char *pcap_file_dir, uint32_t kCaplen = 500, bool overwrite = true);
 
     void dump_original_pkt(const u_char *pkt_content, pcap_pkthdr *pkt_header);
     void dump_pkt_info(PktInfo pkt_info);
     void close_dump_file();
+
+    pcap_dumper_t* get_pcap_dumper() { return pcap_dumper_; }
 
   private:
     void generate_template();

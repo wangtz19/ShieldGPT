@@ -11,13 +11,18 @@
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
     
-PcapWriter::PcapWriter(const char *pcap_file_dir, uint32_t kCaplen){
+PcapWriter::PcapWriter(const char *pcap_file_dir, uint32_t kCaplen, bool overwrite){
     kCaplen_ = kCaplen;
     generate_template();
     pcap_descr_ = pcap_open_dead_with_tstamp_precision(DLT_EN10MB, kCaplen_, PCAP_TSTAMP_PRECISION_NANO);
-    pcap_dumper_ = pcap_dump_open(pcap_descr_, pcap_file_dir);
+    if (overwrite) {
+        pcap_dumper_ = pcap_dump_open(pcap_descr_, pcap_file_dir);
+    } else {
+        pcap_dumper_ = pcap_dump_open_append(pcap_descr_, pcap_file_dir);
+    }
     if(pcap_dumper_ == NULL){
-        std::cout << "pcap_dumper == NULL" << std::endl;
+        // std::cout << pcap_file_dir << " cannot be opened" << std::endl;
+        // std::cout << "pcap_dumper == NULL" << std::endl;
     }
 }
 
