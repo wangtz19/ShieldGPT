@@ -1,5 +1,6 @@
 *.pcap
 flow*
+image/
 *.ipynb
 *.csv
 *.json
