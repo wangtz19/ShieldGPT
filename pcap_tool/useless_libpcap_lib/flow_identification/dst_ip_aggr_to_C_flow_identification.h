@@ -8,7 +8,7 @@ class DstIpAggrToCFlowIdentification : public AbstractFlowIdentification<uint32_
     DstIpAggrToCFlowIdentification();
 
     uint32_t get_flow_id(FiveTuple five_tuple) override;
-    std::string dump_flow_id(uint32_t flow_id) override;
+    std::string dump_flow_id(uint32_t flow_id, std::string flow_prefix = "") override;
 };
 
 #endif

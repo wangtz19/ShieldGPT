@@ -49,7 +49,8 @@ timeval PcapReader::generate_next(){
             return pkt_header->ts;
         }
         ExtraPktInfo extra_pkt_info;
-        curr_pkt_info_ = raw_pkt_to_pkt_info(pkt_header, pkt_content, &extra_pkt_info);
+        int data_link_type = get_data_link_type();
+        curr_pkt_info_ = raw_pkt_to_pkt_info(pkt_header, pkt_content, &extra_pkt_info, data_link_type);
         if(curr_pkt_info_.pkt_len == 0){ // ignore non ipv4 packets
             continue;
         }
@@ -80,6 +81,7 @@ timeval PcapReader::generate_next(){
             }
         }
         if(enable_original_pkt_){
+            // std::cout << "copy original pcap header and packet content\n";
             memcpy(curr_pkt_content_, pkt_content, pkt_header->caplen);
             memcpy(&curr_pkt_header_, pkt_header, sizeof(pcap_pkthdr));
         }
@@ -100,6 +102,10 @@ bool PcapReader::is_end(){
 
 void PcapReader::close(){
     pcap_close(pcap_descr_);
+}
+
+int PcapReader::get_data_link_type(){
+    return pcap_datalink(pcap_descr_);
 }
 
 int64_t PcapReader::hash_func(const u_char *pkt_content, uint32_t start, uint32_t end){

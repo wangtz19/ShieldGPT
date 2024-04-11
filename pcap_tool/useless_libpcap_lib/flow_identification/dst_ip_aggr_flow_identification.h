@@ -8,7 +8,7 @@ class DstIpAggrFlowIdentification : public AbstractFlowIdentification<uint32_t>{
     DstIpAggrFlowIdentification(std::map<uint32_t, uint32_t> aggregation_configuration);
 
     uint32_t get_flow_id(FiveTuple five_tuple) override;
-    std::string dump_flow_id(uint32_t flow_id) override;
+    std::string dump_flow_id(uint32_t flow_id, std::string flow_prefix = "") override;
 
   private:
     std::map<uint32_t, uint32_t> aggregation_configuration_;

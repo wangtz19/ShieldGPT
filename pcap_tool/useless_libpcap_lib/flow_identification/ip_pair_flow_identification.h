@@ -8,7 +8,7 @@
 class IpPairFlowIdentification : public AbstractFlowIdentification<FiveTuple>{
   public:
     FiveTuple get_flow_id(FiveTuple five_tuple) override;
-    std::string dump_flow_id(FiveTuple flow_id) override;
+    std::string dump_flow_id(FiveTuple flow_id, std::string flow_prefix = "") override;
 };
 
 #endif

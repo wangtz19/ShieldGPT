@@ -4,10 +4,10 @@ uint32_t SrcIpFlowIdentification::get_flow_id(FiveTuple five_tuple){
     return five_tuple.src_ip;
 }
 
-std::string SrcIpFlowIdentification::dump_flow_id(uint32_t flow_id){
+std::string SrcIpFlowIdentification::dump_flow_id(uint32_t flow_id, std::string flow_prefix){
     char ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(flow_id), ip_str, INET_ADDRSTRLEN);
-    std::string ret;
+    std::string ret = flow_prefix;
     ret += "\"";
     ret += ip_str;
     ret += "\"";

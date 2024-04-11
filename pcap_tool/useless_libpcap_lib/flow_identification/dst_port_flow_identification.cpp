@@ -4,8 +4,8 @@ uint16_t DstPortFlowIdendification::get_flow_id(FiveTuple five_tuple){
     return five_tuple.dst_port;
 }
 
-std::string DstPortFlowIdendification::dump_flow_id(uint16_t flow_id){
-    std::string ret;
+std::string DstPortFlowIdendification::dump_flow_id(uint16_t flow_id, std::string flow_prefix){
+    std::string ret = flow_prefix;
     ret += "\"";
     ret += std::to_string(flow_id);
     ret += "\"";

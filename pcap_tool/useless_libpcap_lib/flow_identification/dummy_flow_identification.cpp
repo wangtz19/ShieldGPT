@@ -4,6 +4,6 @@ uint16_t DummyFlowIdentification::get_flow_id(FiveTuple five_tuple){
     return 0;
 }
 
-std::string DummyFlowIdentification::dump_flow_id(uint16_t flow_id){
-    return "\"naf\"";
+std::string DummyFlowIdentification::dump_flow_id(uint16_t flow_id, std::string flow_prefix){
+    return flow_prefix + "\"naf\"";
 }

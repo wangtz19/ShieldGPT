@@ -23,7 +23,8 @@ int main(int argc, char *argv[]){
         ("input,i", po::value<std::string>(), "set input file name")
         ("output_dir,o", po::value<std::string>(), "set result directory")
         ("flow_format,f", po::value<std::string>(), "set format for splitting flows, available options: ip_pair, ip_pair_reverse, five_tuple")
-        ("flow_packet_limit,p", po::value<int>(), "set the maximum number of packets for each flow")
+        ("flow_packet_limit,l", po::value<int>(), "set the maximum number of packets for each flow")
+        ("flow_prefix,p", po::value<std::string>(), "set the prefix for the flow file name")
         ;
     
     po::variables_map vm;
@@ -72,6 +73,12 @@ int main(int argc, char *argv[]){
         }
     }
 
+    std::string flow_prefix;
+    if (vm.count("flow_prefix")) {
+        flow_prefix = vm["flow_prefix"].as<std::string>();
+    } else {
+        flow_prefix = "";
+    }
     PcapReader pcap_reader(filename.c_str(), false, false, true, false);
 
     std::map<std::string, PcapWriter*> pcap_writers;
@@ -94,7 +101,6 @@ int main(int argc, char *argv[]){
     int total_pkt_cnt = 0;
 
     while(true){
-
         if (clock() - start_time > CLOCKS_PER_SEC){
             std::cout << "[# pkts in 1s] " << pkt_cnt << "  [total pkts] " << total_pkt_cnt << std::endl;
             pkt_cnt = 0;
@@ -104,8 +110,9 @@ int main(int argc, char *argv[]){
         pkt_cnt++;
 
         PktInfo pkt_info = pcap_reader.get_current_pkt_info();
+        // std::cout << pkt_info << std::endl;
         
-        std::string flow_str = flow_identification->dump_flow_id(pkt_info.flow_id);
+        std::string flow_str = flow_identification->dump_flow_id(pkt_info.flow_id, flow_prefix);
         bool is_new_flow = false;
         if (flow_packet_count.find(flow_str) == flow_packet_count.end()){
             flow_packet_count[flow_str] = 1;
@@ -128,7 +135,8 @@ int main(int argc, char *argv[]){
         }
         if (pcap_writers.find(flow_str) == pcap_writers.end()){
             std::string cooked_filename = result_dir + flow_str + ".pcap";
-            PcapWriter *ptr = new PcapWriter(cooked_filename.c_str(), 500, is_new_flow);
+            int data_link_type = pcap_reader.get_data_link_type();
+            PcapWriter *ptr = new PcapWriter(cooked_filename.c_str(), 500, is_new_flow, data_link_type);
             // if (ptr->get_pcap_dumper() == NULL){
             //     // a simple fd scheduler with LRU policy
             //     // all file descriptors are used, close the first one thousand files
@@ -156,7 +164,9 @@ int main(int argc, char *argv[]){
         pcap_writers[flow_str]->dump_original_pkt(pkt_content, &pkt_header);
 
         pcap_reader.generate_next();
-        if(pcap_reader.is_end())
+        if(pcap_reader.is_end()) {
+            std::cout << "reach packet end" << std::endl;
             break;
+        }
     }
 }

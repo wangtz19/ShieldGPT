@@ -57,16 +57,74 @@ bool timeval_less(const timeval &a, const timeval &b){
     }
 }
 
-PktInfo raw_pkt_to_pkt_info(pcap_pkthdr *pkt_header, const u_char *pkt_content, ExtraPktInfo *extra_pkt_info){
+PktInfo raw_pkt_to_pkt_info(pcap_pkthdr *pkt_header, const u_char *pkt_content, ExtraPktInfo *extra_pkt_info, int link_type){
     PktInfo pkt_info;
     pkt_info.pkt_len = 0;
     const struct ether_header *ethernet_header;
     const struct ip *ip_header;
     const struct tcphdr *tcp_header;
     const struct udphdr *udp_header;
-    ethernet_header = (struct ether_header*)pkt_content;
-    if (ntohs(ethernet_header->ether_type)==ETHERTYPE_IP) {
-        ip_header = (struct ip*)(pkt_content + sizeof(struct ether_header));
+    
+    if (link_type == DLT_EN10MB) { // Ethernet
+        ethernet_header = (struct ether_header*)pkt_content;
+        if (ntohs(ethernet_header->ether_type)==ETHERTYPE_IP) { // IP
+            ip_header = (struct ip*)(pkt_content + sizeof(struct ether_header));
+            pkt_info.flow_id.dst_ip = ip_header->ip_dst.s_addr;
+            pkt_info.flow_id.src_ip = ip_header->ip_src.s_addr;
+            pkt_info.flow_id.proto = ip_header->ip_p;
+
+            pkt_info.pkt_len = ntohs(ip_header->ip_len);
+            pkt_info.pkt_time = pkt_header->ts;
+
+            extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_NOT_FRAGMENT;
+            if ((ip_header->ip_off & IP_MF) && ((ntohs(ip_header->ip_off) & IP_OFFMASK) == 0)){
+                extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_FIRST_FRAGMENT;
+                extra_pkt_info->ip_fragment_id = ntohs(ip_header->ip_id);
+            }
+            else if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
+                extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_FRAGMENT;
+                extra_pkt_info->ip_fragment_id = ntohs(ip_header->ip_id);
+            }
+
+            if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
+                return pkt_info;
+            }
+            if (ip_header->ip_p == IPPROTO_UDP){
+                udp_header = (struct udphdr*)(pkt_content + sizeof(struct ether_header) + sizeof(struct ip));
+                pkt_info.flow_id.src_port = ntohs(udp_header->uh_sport);
+                pkt_info.flow_id.dst_port = ntohs(udp_header->uh_dport);
+                
+                pkt_info.pkt_type.udp = true;
+
+                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr);
+            }
+            if (ip_header->ip_p == IPPROTO_TCP){
+                tcp_header = (struct tcphdr*)(pkt_content + sizeof(struct ether_header) + sizeof(struct ip));
+                pkt_info.flow_id.src_port = ntohs(tcp_header->th_sport);
+                pkt_info.flow_id.dst_port = ntohs(tcp_header->th_dport);
+
+                pkt_info.pkt_type.tcp = true;
+
+                if(tcp_header->syn){pkt_info.pkt_type.tcp_syn = true;}
+                if(tcp_header->fin){pkt_info.pkt_type.tcp_fin = true;}
+                if(tcp_header->rst){pkt_info.pkt_type.tcp_rst = true;}
+                if(tcp_header->ack){pkt_info.pkt_type.tcp_ack = true;}
+
+                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + tcp_header->th_off * 4;
+            }
+            if (ip_header->ip_p == IPPROTO_ICMP){
+                pkt_info.pkt_type.icmp = true;
+
+                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct icmphdr);
+            }
+        } else if (ntohs(ethernet_header->ether_type)==ETHERTYPE_ARP) { // ARP
+            std::cout << "ARP packet" << std::endl;
+        } else {
+            std::cout << "Unsupported Ether type: " << ntohs(ethernet_header->ether_type) << std::endl;
+        }
+        
+    } else if (link_type == DLT_RAW) { // Raw IP
+        ip_header = (struct ip*)pkt_content;
         pkt_info.flow_id.dst_ip = ip_header->ip_dst.s_addr;
         pkt_info.flow_id.src_ip = ip_header->ip_src.s_addr;
         pkt_info.flow_id.proto = ip_header->ip_p;
@@ -85,19 +143,20 @@ PktInfo raw_pkt_to_pkt_info(pcap_pkthdr *pkt_header, const u_char *pkt_content, 
         }
 
         if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
+            std::cout << "Fragmented packet" << std::endl;
             return pkt_info;
         }
         if (ip_header->ip_p == IPPROTO_UDP){
-            udp_header = (struct udphdr*)(pkt_content + sizeof(struct ether_header) + sizeof(struct ip));
+            udp_header = (struct udphdr*)(pkt_content + sizeof(struct ip));
             pkt_info.flow_id.src_port = ntohs(udp_header->uh_sport);
             pkt_info.flow_id.dst_port = ntohs(udp_header->uh_dport);
             
             pkt_info.pkt_type.udp = true;
 
-            extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr);
+            extra_pkt_info->payload_start = sizeof(struct ip) + sizeof(struct udphdr);
         }
         if (ip_header->ip_p == IPPROTO_TCP){
-            tcp_header = (struct tcphdr*)(pkt_content + sizeof(struct ether_header) + sizeof(struct ip));
+            tcp_header = (struct tcphdr*)(pkt_content + sizeof(struct ip));
             pkt_info.flow_id.src_port = ntohs(tcp_header->th_sport);
             pkt_info.flow_id.dst_port = ntohs(tcp_header->th_dport);
 
@@ -108,13 +167,15 @@ PktInfo raw_pkt_to_pkt_info(pcap_pkthdr *pkt_header, const u_char *pkt_content, 
             if(tcp_header->rst){pkt_info.pkt_type.tcp_rst = true;}
             if(tcp_header->ack){pkt_info.pkt_type.tcp_ack = true;}
 
-            extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + tcp_header->th_off * 4;
+            extra_pkt_info->payload_start = sizeof(struct ip) + tcp_header->th_off * 4;
         }
         if (ip_header->ip_p == IPPROTO_ICMP){
             pkt_info.pkt_type.icmp = true;
 
-            extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct icmphdr);
+            extra_pkt_info->payload_start = sizeof(struct ip) + sizeof(struct icmphdr);
         }
+    } else {
+        std::cout << "Unsupported data link type: " << link_type << std::endl;
     }
 
     return pkt_info;

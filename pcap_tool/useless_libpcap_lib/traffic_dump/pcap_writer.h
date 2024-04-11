@@ -10,7 +10,8 @@
 
 class PcapWriter {
   public:
-    PcapWriter(const char *pcap_file_dir, uint32_t kCaplen = 500, bool overwrite = true);
+    PcapWriter(const char *pcap_file_dir, uint32_t kCaplen = 500, 
+              bool overwrite = true, int data_link_type = DLT_EN10MB);
 
     void dump_original_pkt(const u_char *pkt_content, pcap_pkthdr *pkt_header);
     void dump_pkt_info(PktInfo pkt_info);

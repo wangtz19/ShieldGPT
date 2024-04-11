@@ -9,7 +9,7 @@ template <typename T>
 class AbstractFlowIdentification{
   public:
     virtual T get_flow_id(FiveTuple five_tuple) = 0;
-    virtual std::string dump_flow_id(T flow_id) = 0;
+    virtual std::string dump_flow_id(T flow_id, std::string flow_prefix = "") = 0;
 };
 
 #endif

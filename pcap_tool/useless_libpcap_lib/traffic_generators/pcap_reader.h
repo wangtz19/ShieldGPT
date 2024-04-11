@@ -24,6 +24,7 @@ class PcapReader: public AbstractTrafficGenerator {
     timeval generate_next() override;
     bool is_end() override;
     void close() override;
+    int get_data_link_type();
 
   private:
     int64_t hash_func(const u_char *pkt_content, uint32_t start, uint32_t end);
