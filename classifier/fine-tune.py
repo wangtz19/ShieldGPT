@@ -39,7 +39,7 @@ def get_args_parser():
     parser.add_argument('--batch_size', default=64, type=int,
                         help='Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus')
     parser.add_argument('--epochs', default=200, type=int)
-    parser.add_argument('--save_steps_freq', default=20000, type=int)
+    parser.add_argument('--save_steps_freq', default=5000, type=int)
     parser.add_argument('--accum_iter', default=1, type=int,
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
 
@@ -344,6 +344,12 @@ def main(args):
                 f.write(json.dumps(log_stats) + "\n")
 
     total_time = time.time() - start_time
+    with open(os.path.join(args.output_dir, "train_stats.json"), mode="w", encoding="utf-8") as f:
+        json.dump({
+            "batch_size": args.batch_size,
+            "epochs": epochs,
+            "total_time": total_time,
+        })
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
 

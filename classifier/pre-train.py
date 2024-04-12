@@ -209,6 +209,12 @@ def main(args):
                 f.write(json.dumps(log_stats) + "\n")
 
     total_time = time.time() - start_time
+    with open(os.path.join(args.output_dir, "train_stats.json"), mode="w", encoding="utf-8") as f:
+        json.dump({
+            "batch_size": args.batch_size,
+            "epochs": epochs,
+            "total_time": total_time,
+        })
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))
 

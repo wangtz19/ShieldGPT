@@ -13,7 +13,7 @@ import os
 from torchvision import datasets, transforms
 import util.misc as misc
 import models_YaTC
-from engine import evaluate
+from engine import evaluate, evaluate_speed_test
 
 
 def get_args_parser():
@@ -107,9 +107,14 @@ def main(args):
     msg = model.load_state_dict(checkpoint_model, strict=False)
     print(msg)
     model.to(device)
+    # test_stats = evaluate(data_loader_val, model, device)
+    print(f"Batch size: {args.batch_size}")
     test_stats = evaluate(data_loader_val, model, device)
     for k, v in test_stats.items():
         print(f"Test {k}: {v}")
+    with open(os.path.join(args.output_dir, 'test_stats.json'), 'w') as f:
+        new_stats = {k: v.tolist() if isinstance(v, torch.Tensor) or isinstance(v, np.ndarray) else v for k, v in test_stats.items()}
+        json.dump(new_stats, f, indent=2)
 
 if __name__ == '__main__':
     args = get_args_parser()

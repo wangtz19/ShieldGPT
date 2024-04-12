@@ -242,3 +242,83 @@ def evaluate(data_loader, model, device):
     test_state['support_per_class'] = support_per_class
 
     return test_state
+
+
+import time
+
+@torch.no_grad()
+def evaluate_speed_test(data_loader, model, device):
+    # criterion = torch.nn.CrossEntropyLoss()
+    start_time = time.time()
+
+    metric_logger = misc.MetricLogger(delimiter="  ")
+    header = 'Test:'
+
+    # switch to evaluation mode
+    model.eval()
+
+    pred_all = []
+    target_all = []
+
+    # for batch in metric_logger.log_every(data_loader, 10, header):
+    for batch in data_loader:
+        now = time.time()
+        if now - start_time > 100:
+            total_samples = len(pred_all)
+            total_time = now - start_time
+            print(f"Total samples: {total_samples}, Total time: {total_time}, Speed: {total_samples / total_time} samples/s")
+            break
+        images = batch[0]
+        target = batch[-1]
+        images = images.to(device, non_blocking=True)
+        target = target.to(device, non_blocking=True)
+
+        # compute output
+        with torch.cuda.amp.autocast():
+            output = model(images)
+            # loss = criterion(output, target)
+
+        _, pred = output.topk(1, 1, True, True)
+        pred = pred.t()
+
+        pred_all.extend(pred[0].cpu())
+        target_all.extend(target.cpu())
+        # acc1, acc5 = accuracy(output, target, topk=(1, 5))
+
+        # batch_size = images.shape[0]
+        # metric_logger.update(loss=loss.item())
+        # metric_logger.meters['acc1'].update(acc1.item()/100, n=batch_size)
+        # metric_logger.meters['acc5'].update(acc5.item()/100, n=batch_size)
+    
+    total_samples = len(data_loader.dataset)
+    total_time = time.time() - start_time
+    print(f"Total samples: {total_samples}, Total time: {total_time}, Speed: {total_samples / total_time} samples/s")
+
+    macro = precision_recall_fscore_support(target_all, pred_all, average='weighted')
+    cm = confusion_matrix(target_all, pred_all)
+
+    # compute acc, precision, recall, f1 for each class
+    acc = accuracy_score(target_all, pred_all)
+    pre_per_class, rec_per_class, f1_per_class, support_per_class = precision_recall_fscore_support(target_all, pred_all, average=None)
+
+    # gather the stats from all processes
+    metric_logger.synchronize_between_processes()
+    print('* Acc@1 {top1.global_avg:.4f} Acc@5 {top5.global_avg:.4f} loss {losses.global_avg:.4f}'
+          .format(top1=metric_logger.acc1, top5=metric_logger.acc5, losses=metric_logger.loss))
+    print(
+        '* Pre {macro_pre:.4f} Rec {macro_rec:.4f} F1 {macro_f1:.4f}'
+        .format(macro_pre=macro[0], macro_rec=macro[1],
+                    macro_f1=macro[2]))
+
+    test_state = {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+    test_state['macro_pre'] = macro[0]
+    test_state['macro_rec'] = macro[1]
+    test_state['macro_f1'] = macro[2]
+    test_state['cm'] = cm
+    test_state['acc'] = acc
+    test_state['pre_per_class'] = pre_per_class
+    test_state['rec_per_class'] = rec_per_class
+    test_state['f1_per_class'] = f1_per_class
+    test_state['support_per_class'] = support_per_class
+
+    return test_state
