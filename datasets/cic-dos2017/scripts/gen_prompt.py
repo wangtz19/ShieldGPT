@@ -47,9 +47,12 @@ device_dict = {
     "snort": {
         "description": "a Snort IPS",
     },
+    "iptables": {
+        "description": "a Linux server with iptables",
+    },
 }
 
-DEVICE_NAME = "cisco"
+DEVICE_NAME = "iptables"
 NUM_SAMPLE_PER_ATTACK = 3
 ADD_ANALYSIS = False
 res_list = []
@@ -78,7 +81,7 @@ Note that your advice should be as specific as possible, and you need to provide
             "label": attack,
         })
 df = pd.DataFrame(res_list)
-df.to_csv(f"../output/attack_prompt_0312_{DEVICE_NAME}_a={ADD_ANALYSIS}.csv", index=False)
+df.to_csv(f"../output/attack_prompt_0529_{DEVICE_NAME}_a={ADD_ANALYSIS}.csv", index=False)
 
 # with open("attack_prompt.json", "w") as f:
 #     json.dump(res, f, indent=2)
