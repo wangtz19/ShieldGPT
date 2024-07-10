@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import torch
 import torch.backends.cudnn as cudnn
+from torchvision import transforms
 from tqdm import tqdm
 
 import util.lr_decay as lrd
@@ -82,13 +83,24 @@ def get_args_parser():
 
 @torch.no_grad()
 def evaluate(image, model, device, if_stat=False):
-    criterion = torch.nn.CrossEntropyLoss()
+    mean = [0.5]
+    std = [0.5]
+
+    transform = transforms.Compose([
+        transforms.Grayscale(num_output_channels=1),
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std),
+    ])
+
+    image = transform(image)
+    # print(image.shape)
+    # print(image)
 
     # switch to evaluation mode
     model.eval()
 
     # for batch in metric_logger.log_every(data_loader, 10, header):
-    images = torch.from_numpy(image.reshape(1, 1, 40, 40)).half()
+    images = image.reshape(1, 1, 40, 40).half()
     # print(images)
     images = images.to(device, non_blocking=True)
 
@@ -228,14 +240,15 @@ def packet_callback(packet, stream_num, model, model_llm, tokenizer, device):
         image = Image.fromarray(flow_array.reshape(40, 40).astype(np.uint8))
         image.save(image_filename)
         generate_digest(f"./pcap/{name}.pcap")
-        res = ["benign", "goldeneye", "hulk", "rudy", "slowbody2", "slowheaders", "slowloris", "slowread"][evaluate(flow_array, model, device).item()]
+        res = ["benign", "goldeneye", "hulk", "rudy", "slowbody2", "slowheaders", "slowloris", "slowread"][evaluate(image, model, device).item()]
         print(name, res)
-        if res != "benign":
-            df = generate_prompt(name, res)
-            tqdm.pandas()
-            df[f"reply-{'gpt-4'}"] = df["prompt"].progress_apply(
-                lambda x: llm.llm_generate(x, 'gpt-4', model_llm, tokenizer))
-            df.to_csv(f"./pcap/{name}.csv", index=False)
+        # res = "goldeneye"
+        # if res != "benign":
+        #     df = generate_prompt(name, res)
+        #     tqdm.pandas()
+        #     df[f"reply-{'gpt-4'}"] = df["prompt"].progress_apply(
+        #         lambda x: llm.llm_generate(x, 'gpt-4', model_llm, tokenizer))
+        #     df.to_csv(f"./pcap/{name}.csv", index=False)
 
 if __name__ == '__main__':
     packet_num = 0
