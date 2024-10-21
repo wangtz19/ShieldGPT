@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 #include <ostream>
 #include <map>
@@ -19,16 +20,18 @@ struct PktType {
     bool tcp_fin = false;
     bool tcp_rst = false;
     bool tcp_ack = false;
+    bool ipv6 = false;
 
     PktType(){}
-    PktType(bool udp, bool tcp, bool icmp, bool tcp_syn, bool tcp_fin, bool tcp_rst, bool tcp_ack)
+    PktType(bool udp, bool tcp, bool icmp, bool tcp_syn, bool tcp_fin, bool tcp_rst, bool tcp_ack, bool ipv6 = false)
         : udp(udp), 
           tcp(tcp), 
           icmp(icmp), 
           tcp_syn(tcp_syn), 
           tcp_fin(tcp_fin), 
           tcp_rst(tcp_rst), 
-          tcp_ack(tcp_ack){
+          tcp_ack(tcp_ack),
+          ipv6(ipv6){
     }
 
     friend std::ostream& operator<<(std::ostream& os, const PktType& pkt_type);
@@ -40,6 +43,9 @@ struct FiveTuple {
     uint16_t src_port = 0;
     uint16_t dst_port = 0;
     uint8_t proto = 0;
+    uint8_t src_ipv6[16] = {0};
+    uint8_t dst_ipv6[16] = {0};
+    bool ipv6 = false;
 
     FiveTuple(){}
     FiveTuple(uint32_t src_ip, uint32_t dst_ip, uint16_t src_port, uint16_t dst_port, uint8_t proto)
@@ -47,7 +53,16 @@ struct FiveTuple {
           dst_ip(dst_ip), 
           src_port(src_port), 
           dst_port(dst_port), 
-          proto(proto){
+          proto(proto),
+          ipv6(false) {
+    }
+    FiveTuple(uint8_t src_ip[16], uint8_t dst_ip[16], uint16_t src_port, uint16_t dst_port, uint8_t proto)
+        : src_port(src_port), 
+          dst_port(dst_port), 
+          proto(proto),
+          ipv6(true) {
+        memcpy(this->src_ipv6, src_ip, 16);
+        memcpy(this->dst_ipv6, dst_ip, 16);
     }
 
     friend std::ostream& operator<<(std::ostream& os, const FiveTuple& five_tuple);

@@ -79,7 +79,7 @@ int main(int argc, char *argv[]){
     } else {
         flow_prefix = "";
     }
-    PcapReader pcap_reader(filename.c_str(), false, false, true, false);
+    PcapReader pcap_reader(filename.c_str(), false, false, true, false); // enable_original_pkt = true
 
     std::map<std::string, PcapWriter*> pcap_writers;
     // std::set<std::string> existing_flows;
