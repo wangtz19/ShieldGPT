@@ -59,6 +59,110 @@ bool timeval_less(const timeval &a, const timeval &b){
     }
 }
 
+void set_ipv4_pkt_info(pcap_pkthdr *pkt_header, ExtraPktInfo *extra_pkt_info, PktInfo& pkt_info,
+                        const ip* ip_header, bool has_vlan) {
+    pkt_info.flow_id.dst_ip = ip_header->ip_dst.s_addr;
+    pkt_info.flow_id.src_ip = ip_header->ip_src.s_addr;
+    pkt_info.flow_id.proto = ip_header->ip_p;
+    pkt_info.flow_id.ipv6 = false;
+    pkt_info.pkt_type.ipv6 = false;
+
+    pkt_info.pkt_len = ntohs(ip_header->ip_len);
+    pkt_info.pkt_time = pkt_header->ts;
+
+    extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_NOT_FRAGMENT;
+    if ((ip_header->ip_off & IP_MF) && ((ntohs(ip_header->ip_off) & IP_OFFMASK) == 0)){
+        extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_FIRST_FRAGMENT;
+        extra_pkt_info->ip_fragment_id = ntohs(ip_header->ip_id);
+    }
+    else if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
+        extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_FRAGMENT;
+        extra_pkt_info->ip_fragment_id = ntohs(ip_header->ip_id);
+    }
+
+    if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
+        return;
+    }
+    if (ip_header->ip_p == IPPROTO_UDP){
+        const struct udphdr *udp_header = (struct udphdr*)(ip_header + sizeof(struct ip));
+        pkt_info.flow_id.src_port = ntohs(udp_header->uh_sport);
+        pkt_info.flow_id.dst_port = ntohs(udp_header->uh_dport);
+        
+        pkt_info.pkt_type.udp = true;
+
+        extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr);
+    }
+    if (ip_header->ip_p == IPPROTO_TCP){
+        const struct tcphdr *tcp_header = (struct tcphdr*)(ip_header + sizeof(struct ip));
+        pkt_info.flow_id.src_port = ntohs(tcp_header->th_sport);
+        pkt_info.flow_id.dst_port = ntohs(tcp_header->th_dport);
+
+        pkt_info.pkt_type.tcp = true;
+
+        if(tcp_header->syn){pkt_info.pkt_type.tcp_syn = true;}
+        if(tcp_header->fin){pkt_info.pkt_type.tcp_fin = true;}
+        if(tcp_header->rst){pkt_info.pkt_type.tcp_rst = true;}
+        if(tcp_header->ack){pkt_info.pkt_type.tcp_ack = true;}
+
+        extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + tcp_header->th_off * 4;
+    }
+    if (ip_header->ip_p == IPPROTO_ICMP){
+        pkt_info.pkt_type.icmp = true;
+
+        extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct icmphdr);
+    }
+    if (has_vlan){
+        extra_pkt_info->payload_start += 4; // VLAN tag
+    }
+}
+
+void set_ipv6_pkt_info(pcap_pkthdr *pkt_header, ExtraPktInfo *extra_pkt_info, PktInfo& pkt_info,
+    const ip6_hdr* ip6_header, bool has_vlan) {
+    memcpy(pkt_info.flow_id.src_ipv6, ip6_header->ip6_src.s6_addr, 16);
+    memcpy(pkt_info.flow_id.dst_ipv6, ip6_header->ip6_dst.s6_addr, 16);
+    pkt_info.flow_id.proto = ip6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt;
+    pkt_info.flow_id.ipv6 = true;
+    pkt_info.pkt_type.ipv6 = true;
+
+    pkt_info.pkt_len = ntohs(ip6_header->ip6_ctlun.ip6_un1.ip6_un1_plen);
+    pkt_info.pkt_time = pkt_header->ts;
+
+    extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_NOT_FRAGMENT;
+    extra_pkt_info->ip_fragment_id = 0;
+
+    if (ip6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt == IPPROTO_UDP){
+        const struct udphdr *udp_header = (struct udphdr*)(ip6_header + sizeof(struct ip6_hdr));
+        pkt_info.flow_id.src_port = ntohs(udp_header->uh_sport);
+        pkt_info.flow_id.dst_port = ntohs(udp_header->uh_dport);
+        
+        pkt_info.pkt_type.udp = true;
+
+        extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip6_hdr) + sizeof(struct udphdr);
+    }
+    if (ip6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt == IPPROTO_TCP){
+        const struct tcphdr *tcp_header = (struct tcphdr*)(ip6_header + sizeof(struct ip6_hdr));
+        pkt_info.flow_id.src_port = ntohs(tcp_header->th_sport);
+        pkt_info.flow_id.dst_port = ntohs(tcp_header->th_dport);
+
+        pkt_info.pkt_type.tcp = true;
+
+        if(tcp_header->syn){pkt_info.pkt_type.tcp_syn = true;}
+        if(tcp_header->fin){pkt_info.pkt_type.tcp_fin = true;}
+        if(tcp_header->rst){pkt_info.pkt_type.tcp_rst = true;}
+        if(tcp_header->ack){pkt_info.pkt_type.tcp_ack = true;}
+
+        extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip6_hdr) + tcp_header->th_off * 4;
+    }
+    if (ip6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt == IPPROTO_ICMPV6){
+        pkt_info.pkt_type.icmp = true;
+
+        extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);
+    }
+    if (has_vlan){
+        extra_pkt_info->payload_start += 4; // VLAN tag
+    }
+}
+
 PktInfo raw_pkt_to_pkt_info(pcap_pkthdr *pkt_header, const u_char *pkt_content, ExtraPktInfo *extra_pkt_info, int link_type){
     PktInfo pkt_info;
     pkt_info.pkt_len = 0;
@@ -72,155 +176,31 @@ PktInfo raw_pkt_to_pkt_info(pcap_pkthdr *pkt_header, const u_char *pkt_content, 
         ethernet_header = (struct ether_header*)pkt_content;
         if (ntohs(ethernet_header->ether_type)==ETHERTYPE_IP) { // IPv4
             ip_header = (struct ip*)(pkt_content + sizeof(struct ether_header));
-            pkt_info.flow_id.dst_ip = ip_header->ip_dst.s_addr;
-            pkt_info.flow_id.src_ip = ip_header->ip_src.s_addr;
-            pkt_info.flow_id.proto = ip_header->ip_p;
-            pkt_info.flow_id.ipv6 = false;
-            pkt_info.pkt_type.ipv6 = false;
-
-            pkt_info.pkt_len = ntohs(ip_header->ip_len);
-            pkt_info.pkt_time = pkt_header->ts;
-
-            extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_NOT_FRAGMENT;
-            if ((ip_header->ip_off & IP_MF) && ((ntohs(ip_header->ip_off) & IP_OFFMASK) == 0)){
-                extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_FIRST_FRAGMENT;
-                extra_pkt_info->ip_fragment_id = ntohs(ip_header->ip_id);
-            }
-            else if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
-                extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_FRAGMENT;
-                extra_pkt_info->ip_fragment_id = ntohs(ip_header->ip_id);
-            }
-
-            if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
-                return pkt_info;
-            }
-            if (ip_header->ip_p == IPPROTO_UDP){
-                udp_header = (struct udphdr*)(pkt_content + sizeof(struct ether_header) + sizeof(struct ip));
-                pkt_info.flow_id.src_port = ntohs(udp_header->uh_sport);
-                pkt_info.flow_id.dst_port = ntohs(udp_header->uh_dport);
-                
-                pkt_info.pkt_type.udp = true;
-
-                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct udphdr);
-            }
-            if (ip_header->ip_p == IPPROTO_TCP){
-                tcp_header = (struct tcphdr*)(pkt_content + sizeof(struct ether_header) + sizeof(struct ip));
-                pkt_info.flow_id.src_port = ntohs(tcp_header->th_sport);
-                pkt_info.flow_id.dst_port = ntohs(tcp_header->th_dport);
-
-                pkt_info.pkt_type.tcp = true;
-
-                if(tcp_header->syn){pkt_info.pkt_type.tcp_syn = true;}
-                if(tcp_header->fin){pkt_info.pkt_type.tcp_fin = true;}
-                if(tcp_header->rst){pkt_info.pkt_type.tcp_rst = true;}
-                if(tcp_header->ack){pkt_info.pkt_type.tcp_ack = true;}
-
-                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + tcp_header->th_off * 4;
-            }
-            if (ip_header->ip_p == IPPROTO_ICMP){
-                pkt_info.pkt_type.icmp = true;
-
-                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip) + sizeof(struct icmphdr);
-            }
+            set_ipv4_pkt_info(pkt_header, extra_pkt_info, pkt_info, ip_header, false);
         } else if (ntohs(ethernet_header->ether_type)==ETHERTYPE_IPV6) { // IPv6
             ip6_header = (struct ip6_hdr*)(pkt_content + sizeof(struct ether_header));
-            memcpy(pkt_info.flow_id.src_ipv6, ip6_header->ip6_src.s6_addr, 16);
-            memcpy(pkt_info.flow_id.dst_ipv6, ip6_header->ip6_dst.s6_addr, 16);
-            pkt_info.flow_id.proto = ip6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt;
-            pkt_info.flow_id.ipv6 = true;
-            pkt_info.pkt_type.ipv6 = true;
-
-            pkt_info.pkt_len = ntohs(ip6_header->ip6_ctlun.ip6_un1.ip6_un1_plen);
-            pkt_info.pkt_time = pkt_header->ts;
-
-            extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_NOT_FRAGMENT;
-            extra_pkt_info->ip_fragment_id = 0;
-
-            if (ip6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt == IPPROTO_UDP){
-                udp_header = (struct udphdr*)(pkt_content + sizeof(struct ether_header) + sizeof(struct ip6_hdr));
-                pkt_info.flow_id.src_port = ntohs(udp_header->uh_sport);
-                pkt_info.flow_id.dst_port = ntohs(udp_header->uh_dport);
-                
-                pkt_info.pkt_type.udp = true;
-
-                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip6_hdr) + sizeof(struct udphdr);
-            }
-            if (ip6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt == IPPROTO_TCP){
-                tcp_header = (struct tcphdr*)(pkt_content + sizeof(struct ether_header) + sizeof(struct ip6_hdr));
-                pkt_info.flow_id.src_port = ntohs(tcp_header->th_sport);
-                pkt_info.flow_id.dst_port = ntohs(tcp_header->th_dport);
-
-                pkt_info.pkt_type.tcp = true;
-
-                if(tcp_header->syn){pkt_info.pkt_type.tcp_syn = true;}
-                if(tcp_header->fin){pkt_info.pkt_type.tcp_fin = true;}
-                if(tcp_header->rst){pkt_info.pkt_type.tcp_rst = true;}
-                if(tcp_header->ack){pkt_info.pkt_type.tcp_ack = true;}
-
-                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip6_hdr) + tcp_header->th_off * 4;
-            }
-            if (ip6_header->ip6_ctlun.ip6_un1.ip6_un1_nxt == IPPROTO_ICMPV6){
-                pkt_info.pkt_type.icmp = true;
-
-                extra_pkt_info->payload_start = sizeof(struct ether_header) + sizeof(struct ip6_hdr) + sizeof(struct icmp6_hdr);
-            }
+            set_ipv6_pkt_info(pkt_header, extra_pkt_info, pkt_info, ip6_header, false);
         } else if (ntohs(ethernet_header->ether_type)==ETHERTYPE_ARP) { // ARP
             std::cout << "ARP packet" << std::endl;
+        } else if (ntohs(ethernet_header->ether_type)==ETHERTYPE_VLAN) { // VLAN 802.1Q
+            // right shift 4 bytes to skip VLAN tag and get the real Ether type
+            uint16_t vlan_ether_type = ntohs(*(uint16_t*)(pkt_content + sizeof(struct ether_header) + 2));
+            if (vlan_ether_type == ETHERTYPE_IP) { // IPv4
+                ip_header = (struct ip*)(pkt_content + sizeof(struct ether_header) + 4);
+                set_ipv4_pkt_info(pkt_header, extra_pkt_info, pkt_info, ip_header, true);
+            } else if (vlan_ether_type == ETHERTYPE_IPV6) { // IPv6
+                ip6_header = (struct ip6_hdr*)(pkt_content + sizeof(struct ether_header) + 4);
+                set_ipv6_pkt_info(pkt_header, extra_pkt_info, pkt_info, ip6_header, true);
+            } else {
+                std::cout << "Unsupported Ether type in VLAN: " << vlan_ether_type << std::endl;
+            }
         } else {
             std::cout << "Unsupported Ether type: " << ntohs(ethernet_header->ether_type) << std::endl;
         }
         
     } else if (link_type == DLT_RAW) { // Raw IP
         ip_header = (struct ip*)pkt_content;
-        pkt_info.flow_id.dst_ip = ip_header->ip_dst.s_addr;
-        pkt_info.flow_id.src_ip = ip_header->ip_src.s_addr;
-        pkt_info.flow_id.proto = ip_header->ip_p;
-
-        pkt_info.pkt_len = ntohs(ip_header->ip_len);
-        pkt_info.pkt_time = pkt_header->ts;
-
-        extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_NOT_FRAGMENT;
-        if ((ip_header->ip_off & IP_MF) && ((ntohs(ip_header->ip_off) & IP_OFFMASK) == 0)){
-            extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_FIRST_FRAGMENT;
-            extra_pkt_info->ip_fragment_id = ntohs(ip_header->ip_id);
-        }
-        else if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
-            extra_pkt_info->ip_fragment_status = IP_FRAGMENT_STATUS_FRAGMENT;
-            extra_pkt_info->ip_fragment_id = ntohs(ip_header->ip_id);
-        }
-
-        if ((ntohs(ip_header->ip_off) & IP_OFFMASK) != 0){
-            std::cout << "Fragmented packet" << std::endl;
-            return pkt_info;
-        }
-        if (ip_header->ip_p == IPPROTO_UDP){
-            udp_header = (struct udphdr*)(pkt_content + sizeof(struct ip));
-            pkt_info.flow_id.src_port = ntohs(udp_header->uh_sport);
-            pkt_info.flow_id.dst_port = ntohs(udp_header->uh_dport);
-            
-            pkt_info.pkt_type.udp = true;
-
-            extra_pkt_info->payload_start = sizeof(struct ip) + sizeof(struct udphdr);
-        }
-        if (ip_header->ip_p == IPPROTO_TCP){
-            tcp_header = (struct tcphdr*)(pkt_content + sizeof(struct ip));
-            pkt_info.flow_id.src_port = ntohs(tcp_header->th_sport);
-            pkt_info.flow_id.dst_port = ntohs(tcp_header->th_dport);
-
-            pkt_info.pkt_type.tcp = true;
-
-            if(tcp_header->syn){pkt_info.pkt_type.tcp_syn = true;}
-            if(tcp_header->fin){pkt_info.pkt_type.tcp_fin = true;}
-            if(tcp_header->rst){pkt_info.pkt_type.tcp_rst = true;}
-            if(tcp_header->ack){pkt_info.pkt_type.tcp_ack = true;}
-
-            extra_pkt_info->payload_start = sizeof(struct ip) + tcp_header->th_off * 4;
-        }
-        if (ip_header->ip_p == IPPROTO_ICMP){
-            pkt_info.pkt_type.icmp = true;
-
-            extra_pkt_info->payload_start = sizeof(struct ip) + sizeof(struct icmphdr);
-        }
+        set_ipv4_pkt_info(pkt_header, extra_pkt_info, pkt_info, ip_header, false);
     } else {
         std::cout << "Unsupported data link type: " << link_type << std::endl;
     }
